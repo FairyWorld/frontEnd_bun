@@ -64,6 +64,19 @@ describe("fs.watch", () => {
     }
   });
 
+  test("should work with relative dirs", done => {
+    try {
+      const myrelativedir = path.join(testDir, "myrelativedir");
+      try {
+        fs.mkdirSync(myrelativedir);
+      } catch {}
+      fs.writeFileSync(path.join(myrelativedir, "relative.txt"), "hello");
+      bunRunAsScript(testDir, path.join(import.meta.dir, "fixtures", "relative_dir.js"));
+      done();
+    } catch (e: any) {
+      done(e);
+    }
+  });
   test("add file/folder to folder", done => {
     let count = 0;
     const root = path.join(testDir, "add-directory");
@@ -230,7 +243,7 @@ describe("fs.watch", () => {
     } catch (err: any) {
       expect(err).toBeInstanceOf(Error);
       expect(err.code).toBe("ENOENT");
-      expect(err.syscall).toBe("watch");
+      expect(err.syscall).toBe("open");
       done();
     }
   });
@@ -242,18 +255,20 @@ describe("fs.watch", () => {
     const filepath = path.join(testDir, encodingFileName);
 
     const promises: Promise<any>[] = [];
-    encodings.forEach(name => {
+    encodings.forEach(encoding => {
       const encoded_filename =
-        name !== "buffer" ? Buffer.from(encodingFileName, "utf8").toString(name) : Buffer.from(encodingFileName);
+        encoding !== "buffer"
+          ? Buffer.from(encodingFileName, "utf8").toString(encoding)
+          : Buffer.from(encodingFileName);
 
       promises.push(
         new Promise((resolve, reject) => {
           watchers.push(
-            fs.watch(filepath, { encoding: name }, (event, filename) => {
+            fs.watch(filepath, { encoding: encoding }, (event, filename) => {
               try {
                 expect(event).toBe("change");
 
-                if (name !== "buffer") {
+                if (encoding !== "buffer") {
                   expect(filename).toBe(encoded_filename);
                 } else {
                   expect(filename).toBeInstanceOf(Buffer);
@@ -316,7 +331,7 @@ describe("fs.watch", () => {
     try {
       const ac = new AbortController();
       const watcher = fs.watch(pathToFileURL(filepath), { signal: ac.signal });
-      watcher.once("error", () => {
+      watcher.once("error", err => {
         try {
           watcher.close();
           done();
@@ -416,7 +431,9 @@ describe("fs.watch", () => {
       watcher.close();
       expect.unreachable();
     } catch (err: any) {
-      expect(err.message.indexOf("AccessDenied") !== -1).toBeTrue();
+      expect(err.message).toBe("Permission denied");
+      expect(err.code).toBe("EACCES");
+      expect(err.syscall).toBe("open");
     }
   });
 
@@ -430,7 +447,9 @@ describe("fs.watch", () => {
       watcher.close();
       expect.unreachable();
     } catch (err: any) {
-      expect(err.message.indexOf("AccessDenied") !== -1).toBeTrue();
+      expect(err.message).toBe("Permission denied");
+      expect(err.code).toBe("EACCES");
+      expect(err.syscall).toBe("open");
     }
   });
 });

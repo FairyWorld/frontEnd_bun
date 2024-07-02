@@ -17,10 +17,9 @@
       "cwd": "${workspaceFolder}/test",
       "env": {
         "FORCE_COLOR": "1",
-        "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "1",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -33,9 +32,16 @@
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "1",
-        "BUN_DEBUG_FileReader": "1"
+        "BUN_DEBUG_FileReader": "1",
+        "BUN_DEBUG_jest": "1",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
+    },
+    {
+      "type": "lldb",
+      "name": "Attach",
+      "request": "attach",
+      "pid": "${command:pickMyProcess}",
     },
     {
       "type": "lldb",
@@ -47,9 +53,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "0"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "0",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -61,9 +67,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "0",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -75,9 +81,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -89,9 +95,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -104,14 +110,14 @@
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/?wait=1"
+        "BUN_INSPECT": "ws://localhost:0/?wait=1",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "lldb",
@@ -124,14 +130,14 @@
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/?break=1"
+        "BUN_INSPECT": "ws://localhost:0/?break=1",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     // bun run [file]
     {
@@ -144,9 +150,10 @@
       "env": {
         "FORCE_COLOR": "0",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_DEBUG_EventLoop": "1",
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -158,9 +165,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "0"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "0",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -172,9 +179,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "0",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -186,9 +193,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -200,9 +207,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -215,14 +222,14 @@
         "FORCE_COLOR": "0",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/?wait=1"
+        "BUN_INSPECT": "ws://localhost:0/?wait=1",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "lldb",
@@ -235,14 +242,14 @@
         "FORCE_COLOR": "0",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/?break=1"
+        "BUN_INSPECT": "ws://localhost:0/?break=1",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     // bun test [...]
     {
@@ -255,9 +262,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -269,9 +276,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "0"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "0",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -283,9 +290,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "0",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -297,9 +304,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -311,9 +318,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -326,14 +333,14 @@
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/?wait=1"
+        "BUN_INSPECT": "ws://localhost:0/?wait=1",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "lldb",
@@ -346,14 +353,29 @@
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/?break=1"
+        "BUN_INSPECT": "ws://localhost:0/?break=1",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
+    },
+    // bun exec [...]
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "bun exec [...]",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["exec", "${input:testName}"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "FORCE_COLOR": "1",
+        "BUN_DEBUG_QUIET_LOGS": "1",
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
+      },
+      "console": "internalConsole",
     },
     // bun test [*]
     {
@@ -366,9 +388,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -380,9 +402,9 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "0"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "0",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
@@ -395,14 +417,14 @@
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
         "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
-        "BUN_INSPECT": "ws://localhost:0/"
+        "BUN_INSPECT": "ws://localhost:0/",
       },
       "console": "internalConsole",
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "lldb",
@@ -414,22 +436,25 @@
       "env": {
         "FORCE_COLOR": "1",
         "BUN_DEBUG_QUIET_LOGS": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2",
       },
-      "console": "internalConsole"
+      "console": "internalConsole",
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "bun test [*] (ci)",
       "program": "node",
-      "args": ["src/runner.node.mjs"],
-      "cwd": "${workspaceFolder}/packages/bun-internal-test",
-      "console": "internalConsole"
+      "args": ["test/runner.node.mjs"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
     },
     // Windows: bun test [file]
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [file]",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -438,25 +463,28 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_jest",
-          "value": "1"
+          "value": "1",
         },
 
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "1"
-        }
-      ]
+          "value": "1",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test --only [file]",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -465,36 +493,39 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_EventLoop",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_uv",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_SYS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_PipeWriter",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [file] (fast)",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -503,20 +534,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "0"
-        }
-      ]
+          "value": "0",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [file] (verbose)",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -525,20 +559,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "0"
+          "value": "0",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [file] --inspect",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -547,29 +584,32 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/?wait=1"
-        }
+          "value": "ws://localhost:0/?wait=1",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [file] --inspect-brk",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -578,30 +618,33 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/?break=1"
-        }
+          "value": "ws://localhost:0/?break=1",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     // Windows: bun run [file]
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun run [file]",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -610,42 +653,45 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
-      "name": "Windows: bun run [file] (fast)",
+      "name": "Windows: bun install",
       "program": "${workspaceFolder}/build/bun-debug.exe",
-      "args": ["run", "${fileBasename}"],
+      "args": ["install"],
       "cwd": "${fileDirname}",
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
-        {
-          "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
-        },
+
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "0"
-        }
-      ]
+          "value": "0",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun run [file] (verbose)",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -654,20 +700,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "0"
+          "value": "0",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun run [file] --inspect",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -676,29 +725,32 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/?wait=1"
-        }
+          "value": "ws://localhost:0/?wait=1",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun run [file] --inspect-brk",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -707,30 +759,33 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/?break=1"
-        }
+          "value": "ws://localhost:0/?break=1",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     // Windows: bun test [...]
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...]",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -739,20 +794,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...] (fast)",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -761,20 +819,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "0"
-        }
-      ]
+          "value": "0",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...] (verbose)",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -783,20 +844,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "0"
+          "value": "0",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...] --watch",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -805,20 +869,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...] --hot",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -827,20 +894,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...] --inspect",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -849,29 +919,32 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/?wait=1"
-        }
+          "value": "ws://localhost:0/?wait=1",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [...] --inspect-brk",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -880,30 +953,59 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/?break=1"
-        }
+          "value": "ws://localhost:0/?break=1",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
+    },
+    // Windows: bun exec [...]
+    {
+      "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
+      "request": "launch",
+      "name": "Windows: bun exec [...]",
+      "program": "${workspaceFolder}/build/bun-debug.exe",
+      "args": ["exec", "${input:testName}"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "FORCE_COLOR",
+          "value": "1",
+        },
+        {
+          "name": "BUN_DEBUG_QUIET_LOGS",
+          "value": "1",
+        },
+        {
+          "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
+          "value": "2",
+        },
+      ],
     },
     // Windows: bun test [*]
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [*]",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -912,20 +1014,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
-        }
-      ]
+          "value": "2",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [*] (fast)",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -934,20 +1039,23 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "0"
-        }
-      ]
+          "value": "0",
+        },
+      ],
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [*] --inspect",
       "program": "${workspaceFolder}/build/bun-debug.exe",
@@ -956,47 +1064,50 @@
       "environment": [
         {
           "name": "FORCE_COLOR",
-          "value": "1"
+          "value": "1",
         },
         {
           "name": "BUN_DEBUG_QUIET_LOGS",
-          "value": "0"
+          "value": "0",
         },
         {
           "name": "BUN_GARBAGE_COLLECTOR_LEVEL",
-          "value": "2"
+          "value": "2",
         },
         {
           "name": "BUN_INSPECT",
-          "value": "ws://localhost:0/"
-        }
+          "value": "ws://localhost:0/",
+        },
       ],
       "serverReadyAction": {
         "pattern": "https://debug.bun.sh/#localhost:([0-9]+)/",
         "uriFormat": "https://debug.bun.sh/#ws://localhost:%s/",
-        "action": "openExternally"
-      }
+        "action": "openExternally",
+      },
     },
     {
       "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
       "request": "launch",
       "name": "Windows: bun test [*] (ci)",
       "program": "node",
-      "args": ["src/runner.node.mjs"],
-      "cwd": "${workspaceFolder}/packages/bun-internal-test",
-      "console": "internalConsole"
-    }
+      "args": ["test/runner.node.mjs"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+    },
   ],
   "inputs": [
     {
       "id": "commandLine",
       "type": "promptString",
-      "description": "Usage: bun [...]"
+      "description": "Usage: bun [...]",
     },
     {
       "id": "testName",
       "type": "promptString",
-      "description": "Usage: bun test [...]"
-    }
-  ]
+      "description": "Usage: bun test [...]",
+    },
+  ],
 }

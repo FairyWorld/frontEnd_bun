@@ -24,6 +24,7 @@ pub const subproc = @import("./subproc.zig");
 pub const EnvMap = interpret.EnvMap;
 pub const EnvStr = interpret.EnvStr;
 pub const Interpreter = interpret.Interpreter;
+pub const ParsedShellScript = interpret.ParsedShellScript;
 pub const Subprocess = subproc.ShellSubprocess;
 pub const ExitCode = interpret.ExitCode;
 pub const IOWriter = Interpreter.IOWriter;
@@ -574,7 +575,8 @@ pub const AST = struct {
                         len += 1;
                     }
                 }
-                break :brk &ret;
+                const final = ret[0..].*;
+                break :brk &final;
             };
 
             const BINARY_OPS: []const std.builtin.Type.EnumField = brk: {
@@ -596,7 +598,8 @@ pub const AST = struct {
                         len += 1;
                     }
                 }
-                break :brk &ret;
+                const final = ret[0..].*;
+                break :brk &final;
             };
         };
 
@@ -768,8 +771,8 @@ pub const AST = struct {
         }
 
         pub fn toFlags(this: RedirectFlags) bun.Mode {
-            const read_write_flags: bun.Mode = if (this.stdin) std.os.O.RDONLY else std.os.O.WRONLY | std.os.O.CREAT;
-            const extra: bun.Mode = if (this.append) std.os.O.APPEND else std.os.O.TRUNC;
+            const read_write_flags: bun.Mode = if (this.stdin) bun.O.RDONLY else bun.O.WRONLY | bun.O.CREAT;
+            const extra: bun.Mode = if (this.append) bun.O.APPEND else bun.O.TRUNC;
             const final_flags: bun.Mode = if (this.stdin) read_write_flags else extra | read_write_flags;
             return final_flags;
         }
@@ -816,6 +819,50 @@ pub const AST = struct {
 
         pub const Tag = enum(u8) { simple, compound };
 
+        pub fn merge(this: Atom, right: Atom, allocator: Allocator) !Atom {
+            if (this == .simple and right == .simple) {
+                var atoms = try allocator.alloc(SimpleAtom, 2);
+                atoms[0] = this.simple;
+                atoms[1] = right.simple;
+                return .{ .compound = .{
+                    .atoms = atoms,
+                    .brace_expansion_hint = this.simple == .brace_begin or this.simple == .brace_end or right.simple == .brace_begin or right.simple == .brace_end,
+                    .glob_hint = this.simple == .asterisk or this.simple == .double_asterisk or right.simple == .asterisk or right.simple == .double_asterisk,
+                } };
+            }
+
+            if (this == .compound and right == .compound) {
+                var atoms = try allocator.alloc(SimpleAtom, this.compound.atoms.len + right.compound.atoms.len);
+                @memcpy(atoms[0..this.compound.atoms.len], this.compound.atoms);
+                @memcpy(atoms[this.compound.atoms.len .. this.compound.atoms.len + right.compound.atoms.len], right.compound.atoms);
+                return .{ .compound = .{
+                    .atoms = atoms,
+                    .brace_expansion_hint = this.compound.brace_expansion_hint or right.compound.brace_expansion_hint,
+                    .glob_hint = this.compound.glob_hint or right.compound.glob_hint,
+                } };
+            }
+
+            if (this == .simple) {
+                var atoms = try allocator.alloc(SimpleAtom, 1 + right.compound.atoms.len);
+                atoms[0] = this.simple;
+                @memcpy(atoms[1 .. right.compound.atoms.len + 1], right.compound.atoms);
+                return .{ .compound = .{
+                    .atoms = atoms,
+                    .brace_expansion_hint = this.simple == .brace_begin or this.simple == .brace_end or right.compound.brace_expansion_hint,
+                    .glob_hint = this.simple == .asterisk or this.simple == .double_asterisk or right.compound.glob_hint,
+                } };
+            }
+
+            var atoms = try allocator.alloc(SimpleAtom, 1 + this.compound.atoms.len);
+            @memcpy(atoms[0..this.compound.atoms.len], this.compound.atoms);
+            atoms[this.compound.atoms.len] = right.simple;
+            return .{ .compound = .{
+                .atoms = atoms,
+                .brace_expansion_hint = right.simple == .brace_begin or right.simple == .brace_end or this.compound.brace_expansion_hint,
+                .glob_hint = right.simple == .asterisk or right.simple == .double_asterisk or this.compound.glob_hint,
+            } };
+        }
+
         pub fn atomsLen(this: *const Atom) u32 {
             return switch (this.*) {
                 .simple => 1,
@@ -851,6 +898,13 @@ pub const AST = struct {
                 .compound => self.compound.brace_expansion_hint,
             };
         }
+
+        pub fn hasTildeExpansion(self: *const Atom) bool {
+            return switch (self.*) {
+                .simple => self.simple == .tilde,
+                .compound => self.compound.atoms.len > 0 and self.compound.atoms[0] == .tilde,
+            };
+        }
     };
 
     pub const SimpleAtom = union(enum) {
@@ -862,6 +916,7 @@ pub const AST = struct {
         brace_begin,
         brace_end,
         comma,
+        tilde,
         cmd_subst: struct {
             script: Script,
             quoted: bool = false,
@@ -878,6 +933,7 @@ pub const AST = struct {
                 .brace_end => false,
                 .comma => false,
                 .cmd_subst => false,
+                .tilde => false,
             };
         }
     };
@@ -1104,7 +1160,7 @@ pub const Parser = struct {
 
     fn expectIfClauseTextToken(self: *Parser, comptime if_clause_token: @TypeOf(.EnumLiteral)) Token {
         const tagname = comptime extractIfClauseTextToken(if_clause_token);
-        std.debug.assert(@as(TokenTag, self.peek()) == .Text);
+        if (bun.Environment.allow_assert) assert(@as(TokenTag, self.peek()) == .Text);
         if (self.peek() == .Text and
             self.delimits(self.peek_n(1)) and
             std.mem.eql(u8, self.text(self.peek().Text), tagname))
@@ -1113,7 +1169,7 @@ pub const Parser = struct {
             _ = self.expect_delimit();
             return tok;
         }
-        unreachable;
+        @panic("Expected: " ++ @tagName(if_clause_token));
     }
 
     fn isIfClauseTextToken(self: *Parser, comptime if_clause_token: @TypeOf(.EnumLiteral)) bool {
@@ -1500,7 +1556,7 @@ pub const Parser = struct {
                         }
 
                         if (eq_idx == txt.len - 1) {
-                            if (self.peek() == .Delimit) {
+                            if (self.delimits(self.peek())) {
                                 _ = self.expect_delimit();
                                 break :var_decl .{
                                     .label = label,
@@ -1518,10 +1574,25 @@ pub const Parser = struct {
                         }
 
                         const txt_value = txt[eq_idx + 1 .. txt.len];
-                        _ = self.expect_delimit();
+                        if (self.delimits(self.peek())) {
+                            _ = self.expect_delimit();
+                            break :var_decl .{
+                                .label = label,
+                                .value = .{ .simple = .{ .Text = txt_value } },
+                            };
+                        }
+
+                        const right = try self.parse_atom() orelse {
+                            try self.add_error("Expected an atom", .{});
+                            return ParseError.Expected;
+                        };
+                        const left: AST.Atom = .{
+                            .simple = .{ .Text = txt_value },
+                        };
+                        const merged = try AST.Atom.merge(left, right, self.alloc);
                         break :var_decl .{
                             .label = label,
-                            .value = .{ .simple = .{ .Text = txt_value } },
+                            .value = merged,
                         };
                     }
                     break :var_decl null;
@@ -1629,8 +1700,16 @@ pub const Parser = struct {
                     },
                     .SingleQuotedText, .DoubleQuotedText, .Text => |txtrng| {
                         _ = self.advance();
-                        const txt = self.text(txtrng);
-                        try atoms.append(.{ .Text = txt });
+                        var txt = self.text(txtrng);
+                        if (peeked == .Text and txt.len > 0 and txt[0] == '~') {
+                            txt = txt[1..];
+                            try atoms.append(.tilde);
+                            if (txt.len > 0) {
+                                try atoms.append(.{ .Text = txt });
+                            }
+                        } else {
+                            try atoms.append(.{ .Text = txt });
+                        }
                         if (next_delimits) {
                             _ = self.match(.Delimit);
                             if (should_break) break;
@@ -1680,7 +1759,7 @@ pub const Parser = struct {
         return switch (atoms.items.len) {
             0 => null,
             1 => {
-                std.debug.assert(atoms.capacity == 1);
+                if (bun.Environment.allow_assert) assert(atoms.capacity == 1);
                 return AST.Atom.new_simple(atoms.items[0]);
             },
             else => .{ .compound = .{
@@ -1713,22 +1792,20 @@ pub const Parser = struct {
     }
 
     fn expect(self: *Parser, toktag: TokenTag) Token {
-        std.debug.assert(toktag == @as(TokenTag, self.peek()));
+        if (bun.Environment.allow_assert) assert(toktag == @as(TokenTag, self.peek()));
         if (self.check(toktag)) {
             return self.advance();
         }
-        unreachable;
+        @panic("Unexpected token");
     }
 
     fn expect_any(self: *Parser, toktags: []const TokenTag) Token {
-        // std.debug.assert(toktag == @as(TokenTag, self.peek()));
-
         const peeked = self.peek();
         for (toktags) |toktag| {
             if (toktag == @as(TokenTag, peeked)) return self.advance();
         }
 
-        unreachable;
+        @panic("Unexpected token");
     }
 
     fn delimits(self: *Parser, tok: Token) bool {
@@ -1736,11 +1813,11 @@ pub const Parser = struct {
     }
 
     fn expect_delimit(self: *Parser) Token {
-        std.debug.assert(self.delimits(self.peek()));
+        if (bun.Environment.allow_assert) assert(self.delimits(self.peek()));
         if (self.check(.Delimit) or self.check(.Semicolon) or self.check(.Newline) or self.check(.Eof) or (self.inside_subshell != null and self.check(self.inside_subshell.?.closing_tok()))) {
             return self.advance();
         }
-        unreachable;
+        @panic("Expected a delimiter token");
     }
 
     fn match_if_clausetok(self: *Parser, toktag: IfClauseTok) bool {
@@ -2000,7 +2077,7 @@ pub const Token = union(TokenTag) {
         end: u32,
 
         pub fn len(range: TextRange) u32 {
-            if (bun.Environment.allow_assert) std.debug.assert(range.start <= range.end);
+            if (bun.Environment.allow_assert) assert(range.start <= range.end);
             return range.end - range.start;
         }
     };
@@ -2048,19 +2125,19 @@ pub const Token = union(TokenTag) {
         };
     }
 
-    pub fn debug(self: Token, buf: []const u8) void {
-        switch (self) {
-            .Var => |txt| {
-                std.debug.print("(var) {s}\n", .{buf[txt.start..txt.end]});
-            },
-            .Text => |txt| {
-                std.debug.print("(txt) {s}\n", .{buf[txt.start..txt.end]});
-            },
-            else => {
-                std.debug.print("{s}\n", .{@tagName(self)});
-            },
-        }
-    }
+    // pub fn debug(self: Token, buf: []const u8) void {
+    //     switch (self) {
+    //         .Var => |txt| {
+    //             std.debug.print("(var) {s}\n", .{buf[txt.start..txt.end]});
+    //         },
+    //         .Text => |txt| {
+    //             std.debug.print("(txt) {s}\n", .{buf[txt.start..txt.end]});
+    //         },
+    //         else => {
+    //             std.debug.print("{s}\n", .{@tagName(self)});
+    //         },
+    //     }
+    // }
 };
 
 pub const LexerAscii = NewLexer(.ascii);
@@ -2095,8 +2172,16 @@ pub const LexError = struct {
     /// Allocated with lexer arena
     msg: []const u8,
 };
-pub const LEX_JS_OBJREF_PREFIX = "~__bun_";
-pub const LEX_JS_STRING_PREFIX = "~__bunstr_";
+
+/// A special char used to denote the beginning of a special token
+/// used for substituting JS variables into the script string.
+///
+/// \b (decimal value of 8) is deliberately chosen so that it is not
+/// easy for the user to accidentally use this char in their script.
+///
+const SPECIAL_JS_CHAR = 8;
+pub const LEX_JS_OBJREF_PREFIX = &[_]u8{SPECIAL_JS_CHAR} ++ "__bun_";
+pub const LEX_JS_STRING_PREFIX = &[_]u8{SPECIAL_JS_CHAR} ++ "__bunstr_";
 
 pub fn NewLexer(comptime encoding: StringEncoding) type {
     const Chars = ShellCharIter(encoding);
@@ -2235,7 +2320,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                 const escaped = input.escaped;
 
                 // Special token to denote substituted JS variables
-                if (char == '~') {
+                // we use 8 or \b which is a non printable char
+                if (char == SPECIAL_JS_CHAR) {
                     if (self.looksLikeJSStringRef()) {
                         if (self.eatJSStringRef()) |bunstr| {
                             try self.break_word(false);
@@ -2262,6 +2348,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                     switch (char) {
                         // possibly double bracket open
                         '[' => {
+                            comptime assertSpecialChar('[');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             if (self.peek()) |p| {
                                 if (p.escaped or p.char != '[') break :escaped;
@@ -2288,6 +2376,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                             break :escaped;
                         },
                         ']' => {
+                            comptime assertSpecialChar(']');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             if (self.peek()) |p| {
                                 if (p.escaped or p.char != ']') break :escaped;
@@ -2315,6 +2405,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                         },
 
                         '#' => {
+                            comptime assertSpecialChar('#');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             const whitespace_preceding =
                                 if (self.chars.prev) |prev|
@@ -2327,12 +2419,16 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                             continue;
                         },
                         ';' => {
+                            comptime assertSpecialChar(';');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             try self.break_word(true);
                             try self.tokens.append(.Semicolon);
                             continue;
                         },
                         '\n' => {
+                            comptime assertSpecialChar('\n');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             try self.break_word_impl(true, true, false);
                             try self.tokens.append(.Newline);
@@ -2341,6 +2437,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
 
                         // glob asterisks
                         '*' => {
+                            comptime assertSpecialChar('*');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             if (self.peek()) |next| {
                                 if (!next.escaped and next.char == '*') {
@@ -2357,18 +2455,24 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
 
                         // brace expansion syntax
                         '{' => {
+                            comptime assertSpecialChar('{');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             try self.break_word(false);
                             try self.tokens.append(.BraceBegin);
                             continue;
                         },
                         ',' => {
+                            comptime assertSpecialChar(',');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             try self.break_word(false);
                             try self.tokens.append(.Comma);
                             continue;
                         },
                         '}' => {
+                            comptime assertSpecialChar('}');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             try self.break_word(false);
                             try self.tokens.append(.BraceEnd);
@@ -2377,9 +2481,11 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
 
                         // Command substitution
                         '`' => {
+                            comptime assertSpecialChar('`');
+
                             if (self.chars.state == .Single) break :escaped;
                             if (self.in_subshell == .backtick) {
-                                try self.break_word(true);
+                                try self.break_word_operator();
                                 if (self.last_tok_tag()) |toktag| {
                                     if (toktag != .Delimit) try self.tokens.append(.Delimit);
                                 }
@@ -2391,6 +2497,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                         },
                         // Command substitution/vars
                         '$' => {
+                            comptime assertSpecialChar('$');
+
                             if (self.chars.state == .Single) break :escaped;
 
                             const peeked = self.peek() orelse InputChar{ .char = 0 };
@@ -2426,12 +2534,16 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                             continue;
                         },
                         '(' => {
+                            comptime assertSpecialChar('(');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             try self.break_word(true);
                             try self.eat_subshell(.normal);
                             continue;
                         },
                         ')' => {
+                            comptime assertSpecialChar(')');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
                             if (self.in_subshell != .dollar and self.in_subshell != .normal) {
                                 self.add_error("Unexpected ')'");
@@ -2461,6 +2573,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                         },
 
                         '0'...'9' => {
+                            comptime for ('0'..'9') |c| assertSpecialChar(c);
+
                             if (self.chars.state != .Normal) break :escaped;
                             const snapshot = self.make_snapshot();
                             if (self.eat_redirect(input)) |redirect| {
@@ -2474,8 +2588,10 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
 
                         // Operators
                         '|' => {
+                            comptime assertSpecialChar('|');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
-                            try self.break_word(true);
+                            try self.break_word_operator();
 
                             const next = self.peek() orelse {
                                 self.add_error("Unexpected EOF");
@@ -2494,22 +2610,28 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                             continue;
                         },
                         '>' => {
+                            comptime assertSpecialChar('>');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
-                            try self.break_word_impl(true, false, true);
+                            try self.break_word_operator();
                             const redirect = self.eat_simple_redirect(.out);
                             try self.tokens.append(.{ .Redirect = redirect });
                             continue;
                         },
                         '<' => {
+                            comptime assertSpecialChar('<');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
-                            try self.break_word_impl(true, false, true);
+                            try self.break_word_operator();
                             const redirect = self.eat_simple_redirect(.in);
                             try self.tokens.append(.{ .Redirect = redirect });
                             continue;
                         },
                         '&' => {
+                            comptime assertSpecialChar('&');
+
                             if (self.chars.state == .Single or self.chars.state == .Double) break :escaped;
-                            try self.break_word(true);
+                            try self.break_word_operator();
 
                             const next = self.peek() orelse {
                                 try self.tokens.append(.Ampersand);
@@ -2536,6 +2658,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
 
                         // 2. State switchers
                         '\'' => {
+                            comptime assertSpecialChar('\'');
+
                             if (self.chars.state == .Single) {
                                 self.chars.state = .Normal;
                                 continue;
@@ -2547,6 +2671,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                             break :escaped;
                         },
                         '"' => {
+                            comptime assertSpecialChar('"');
+
                             if (self.chars.state == .Single) break :escaped;
                             if (self.chars.state == .Normal) {
                                 try self.break_word(false);
@@ -2561,6 +2687,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
 
                         // 3. Word breakers
                         ' ' => {
+                            comptime assertSpecialChar(' ');
+
                             if (self.chars.state == .Normal) {
                                 try self.break_word_impl(true, true, false);
                                 continue;
@@ -2569,6 +2697,16 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                         },
 
                         else => break :escaped,
+                    }
+                    continue;
+                }
+                // Treat newline preceded by backslash as whitespace
+                else if (char == '\n') {
+                    if (comptime bun.Environment.allow_assert) {
+                        assert(input.escaped);
+                    }
+                    if (self.chars.state != .Double) {
+                        try self.break_word_impl(true, true, false);
                     }
                     continue;
                 }
@@ -2616,13 +2754,18 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
             return try self.break_word_impl(add_delimiter, false, false);
         }
 
+        /// NOTE: this adds a delimiter
+        fn break_word_operator(self: *@This()) !void {
+            return try self.break_word_impl(true, false, true);
+        }
+
         inline fn isImmediatelyEscapedQuote(self: *@This()) bool {
             return (self.chars.state == .Double and
                 (self.chars.current != null and !self.chars.current.?.escaped and self.chars.current.?.char == '"') and
                 (self.chars.prev != null and !self.chars.prev.?.escaped and self.chars.prev.?.char == '"'));
         }
 
-        fn break_word_impl(self: *@This(), add_delimiter: bool, in_normal_space: bool, in_redirect_operator: bool) !void {
+        fn break_word_impl(self: *@This(), add_delimiter: bool, in_normal_space: bool, in_operator: bool) !void {
             const start: u32 = self.word_start;
             const end: u32 = self.j;
             if (start != end or
@@ -2638,7 +2781,8 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                 if (add_delimiter) {
                     try self.tokens.append(.Delimit);
                 }
-            } else if ((in_normal_space or in_redirect_operator) and self.tokens.items.len > 0 and
+            } else if ((in_normal_space or in_operator) and self.tokens.items.len > 0 and
+                // whether or not to add a delimiter token
                 switch (self.tokens.items[self.tokens.items.len - 1]) {
                 .Var,
                 .VarArgv,
@@ -2649,6 +2793,7 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                 .Comma,
                 .BraceEnd,
                 .CmdSubstEnd,
+                .Asterisk,
                 => true,
 
                 .Pipe,
@@ -2657,7 +2802,6 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                 .DoubleAmpersand,
                 .Redirect,
                 .Dollar,
-                .Asterisk,
                 .DoubleAsterisk,
                 .Eq,
                 .Semicolon,
@@ -2922,9 +3066,11 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
                 },
                 .normal => try self.tokens.append(.OpenParen),
             }
+            const prev_quote_state = self.chars.state;
             var sublexer = self.make_sublexer(kind);
             try sublexer.lex();
             self.continue_from_sublexer(&sublexer);
+            self.chars.state = prev_quote_state;
         }
 
         fn appendStringToStrPool(self: *@This(), bunstr: bun.String) !void {
@@ -3185,13 +3331,13 @@ pub fn NewLexer(comptime encoding: StringEncoding) type {
             return self.chars.read_char();
         }
 
-        fn debug_tokens(self: *const @This()) void {
-            std.debug.print("Tokens: \n", .{});
-            for (self.tokens.items, 0..) |tok, i| {
-                std.debug.print("{d}: ", .{i});
-                tok.debug(self.strpool.items[0..self.strpool.items.len]);
-            }
-        }
+        // fn debug_tokens(self: *const @This()) void {
+        //     std.debug.print("Tokens: \n", .{});
+        //     for (self.tokens.items, 0..) |tok, i| {
+        //         std.debug.print("{d}: ", .{i});
+        //         tok.debug(self.strpool.items[0..self.strpool.items.len]);
+        //     }
+        // }
     };
 }
 
@@ -3383,7 +3529,8 @@ pub fn ShellCharIter(comptime encoding: StringEncoding) type {
                         else => return .{ .char = char, .escaped = false },
                     }
                 },
-                else => unreachable,
+                // We checked `self.state == .Single` above so this is impossible
+                .Single => unreachable,
             }
 
             return .{ .char = char, .escaped = true };
@@ -3618,7 +3765,7 @@ pub const Test = struct {
 pub fn shellCmdFromJS(
     globalThis: *JSC.JSGlobalObject,
     string_args: JSValue,
-    template_args: []const JSValue,
+    template_args: *JSC.JSArrayIterator,
     out_jsobjs: *std.ArrayList(JSValue),
     jsstrings: *std.ArrayList(bun.String),
     out_script: *std.ArrayList(u8),
@@ -3638,7 +3785,10 @@ pub fn shellCmdFromJS(
         // const str = js_value.getZigString(globalThis);
         // try script.appendSlice(str.full());
         if (i < last) {
-            const template_value = template_args[i];
+            const template_value = template_args.next() orelse {
+                globalThis.throw("Shell script is missing JSValue arg", .{});
+                return false;
+            };
             if (!(try handleTemplateValue(globalThis, template_value, out_jsobjs, out_script, jsstrings, jsobjref_buf[0..]))) return false;
         }
     }
@@ -3864,7 +4014,18 @@ pub const ShellSrcBuilder = struct {
 };
 
 /// Characters that need to escaped
-const SPECIAL_CHARS = [_]u8{ '$', '>', '&', '|', '=', ';', '\n', '{', '}', ',', '(', ')', '\\', '\"', ' ', '\'' };
+const SPECIAL_CHARS = [_]u8{ '~', '[', ']', '#', ';', '\n', '*', '{', ',', '}', '`', '$', '=', '(', ')', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '|', '>', '<', '&', '\'', '"', ' ', '\\' };
+const SPECIAL_CHARS_TABLE: std.bit_set.IntegerBitSet(256) = brk: {
+    var table = std.bit_set.IntegerBitSet(256).initEmpty();
+    for (SPECIAL_CHARS) |c| {
+        table.set(c);
+    }
+    break :brk table;
+};
+pub fn assertSpecialChar(c: u8) void {
+    comptime bun.assert(@inComptime());
+    bun.assert(SPECIAL_CHARS_TABLE.isSet(c));
+}
 /// Characters that need to be backslashed inside double quotes
 const BACKSLASHABLE_CHARS = [_]u8{ '$', '`', '"', '\\' };
 
@@ -3934,7 +4095,7 @@ pub fn escapeWTF8(str: []const u8, outbuf: *std.ArrayList(u8), comptime add_quot
     }
 }
 
-pub fn escapeUtf16(str: []const u16, outbuf: *std.ArrayList(u8), comptime add_quotes: bool) !bool {
+pub fn escapeUtf16(str: []const u16, outbuf: *std.ArrayList(u8), comptime add_quotes: bool) !struct { is_invalid: bool = false } {
     if (add_quotes) try outbuf.append('"');
 
     const non_ascii = bun.strings.firstNonASCII16([]const u16, str) orelse 0;
@@ -3944,11 +4105,11 @@ pub fn escapeUtf16(str: []const u16, outbuf: *std.ArrayList(u8), comptime add_qu
     loop: while (i < str.len) {
         const char: u32 = brk: {
             if (i < non_ascii) {
-                i += 1;
+                defer i += 1;
                 break :brk str[i];
             }
             const ret = bun.strings.utf16Codepoint([]const u16, str[i..]);
-            if (ret.fail) return false;
+            if (ret.fail) return .{ .is_invalid = true };
             i += ret.len;
             break :brk ret.code_point;
         };
@@ -3964,7 +4125,7 @@ pub fn escapeUtf16(str: []const u16, outbuf: *std.ArrayList(u8), comptime add_qu
         try outbuf.appendSlice(cp_buf[0..len]);
     }
     if (add_quotes) try outbuf.append('"');
-    return true;
+    return .{ .is_invalid = false };
 }
 
 pub fn needsEscapeBunstr(bunstr: bun.String) bool {
@@ -3973,38 +4134,10 @@ pub fn needsEscapeBunstr(bunstr: bun.String) bool {
     return needsEscapeUtf8AsciiLatin1(bunstr.byteSlice());
 }
 
-pub fn needsEscapeUTF16Slow(str: []const u16) bool {
-    for (str) |codeunit| {
-        inline for (SPECIAL_CHARS) |spc| {
-            if (@as(u16, @intCast(spc)) == codeunit) return true;
-        }
-    }
-
-    return false;
-}
-
 pub fn needsEscapeUTF16(str: []const u16) bool {
-    if (str.len < 64) return needsEscapeUTF16Slow(str);
-
-    const needles = comptime brk: {
-        var needles: [SPECIAL_CHARS.len]@Vector(8, u16) = undefined;
-        for (SPECIAL_CHARS, 0..) |c, i| {
-            needles[i] = @splat(@as(u16, @intCast(c)));
-        }
-        break :brk needles;
-    };
-
-    var i: usize = 0;
-    while (i + 8 <= str.len) : (i += 8) {
-        const haystack: @Vector(8, u16) = str[i..][0..8].*;
-
-        inline for (needles) |needle| {
-            const result = haystack == needle;
-            if (std.simd.firstTrue(result) != null) return true;
-        }
+    for (str) |codeunit| {
+        if (codeunit < 0xff and SPECIAL_CHARS_TABLE.isSet(codeunit)) return true;
     }
-
-    if (i < str.len) return needsEscapeUTF16Slow(str[i..]);
 
     return false;
 }
@@ -4014,36 +4147,8 @@ pub fn needsEscapeUTF16(str: []const u16) bool {
 /// false positives, but it is faster than running the shell lexer through the
 /// input string for a more correct implementation.
 pub fn needsEscapeUtf8AsciiLatin1(str: []const u8) bool {
-    if (str.len < 128) return needsEscapeUtf8AsciiLatin1Slow(str);
-
-    const needles = comptime brk: {
-        var needles: [SPECIAL_CHARS.len]@Vector(16, u8) = undefined;
-        for (SPECIAL_CHARS, 0..) |c, i| {
-            needles[i] = @splat(c);
-        }
-        break :brk needles;
-    };
-
-    var i: usize = 0;
-    while (i + 16 <= str.len) : (i += 16) {
-        const haystack: @Vector(16, u8) = str[i..][0..16].*;
-
-        inline for (needles) |needle| {
-            const result = haystack == needle;
-            if (std.simd.firstTrue(result) != null) return true;
-        }
-    }
-
-    if (i < str.len) return needsEscapeUtf8AsciiLatin1Slow(str[i..]);
-
-    return false;
-}
-
-pub fn needsEscapeUtf8AsciiLatin1Slow(str: []const u8) bool {
     for (str) |c| {
-        inline for (SPECIAL_CHARS) |spc| {
-            if (spc == c) return true;
-        }
+        if (SPECIAL_CHARS_TABLE.isSet(c)) return true;
     }
     return false;
 }
@@ -4064,7 +4169,7 @@ pub fn SmolList(comptime T: type, comptime INLINED_MAX: comptime_int) type {
         }
 
         pub fn initWithSlice(vals: []const T) @This() {
-            if (bun.Environment.allow_assert) std.debug.assert(vals.len <= std.math.maxInt(u32));
+            if (bun.Environment.allow_assert) assert(vals.len <= std.math.maxInt(u32));
             if (vals.len <= INLINED_MAX) {
                 var this: @This() = @This().zeroes;
                 @memcpy(this.inlined.items[0..vals.len], vals);
@@ -4135,8 +4240,7 @@ pub fn SmolList(comptime T: type, comptime INLINED_MAX: comptime_int) type {
         pub fn orderedRemove(this: *@This(), idx: usize) void {
             switch (this.*) {
                 .heap => {
-                    var list = this.heap.listManaged(bun.default_allocator);
-                    _ = list.orderedRemove(idx);
+                    _ = this.heap.orderedRemove(idx);
                 },
                 .inlined => {
                     _ = this.inlined.orderedRemove(idx);
@@ -4147,8 +4251,7 @@ pub fn SmolList(comptime T: type, comptime INLINED_MAX: comptime_int) type {
         pub fn swapRemove(this: *@This(), idx: usize) void {
             switch (this.*) {
                 .heap => {
-                    var list = this.heap.listManaged(bun.default_allocator);
-                    _ = list.swapRemove(idx);
+                    _ = this.heap.swapRemove(idx);
                 },
                 .inlined => {
                     _ = this.inlined.swapRemove(idx);
@@ -4266,11 +4369,34 @@ pub fn SmolList(comptime T: type, comptime INLINED_MAX: comptime_int) type {
 
 /// Used in JS tests, see `internal-for-testing.ts` and shell tests.
 pub const TestingAPIs = struct {
+    pub fn disabledOnThisPlatform(globalThis: *JSC.JSGlobalObject, callframe: *JSC.CallFrame) callconv(.C) JSC.JSValue {
+        if (comptime bun.Environment.isWindows) return JSValue.false;
+
+        const arguments_ = callframe.arguments(1);
+        var arguments = JSC.Node.ArgumentsSlice.init(globalThis.bunVM(), arguments_.slice());
+        const string = arguments.nextEat() orelse {
+            globalThis.throw("shellInternals.disabledOnPosix: expected 1 arguments, got 0", .{});
+            return JSC.JSValue.jsUndefined();
+        };
+
+        const bunstr = string.toBunString(globalThis);
+        defer bunstr.deref();
+        const utf8str = bunstr.toUTF8(bun.default_allocator);
+        defer utf8str.deinit();
+
+        inline for (Interpreter.Builtin.Kind.DISABLED_ON_POSIX) |disabled| {
+            if (bun.strings.eqlComptime(utf8str.byteSlice(), @tagName(disabled))) {
+                return JSValue.true;
+            }
+        }
+        return JSValue.false;
+    }
+
     pub fn shellLex(
         globalThis: *JSC.JSGlobalObject,
         callframe: *JSC.CallFrame,
     ) callconv(.C) JSC.JSValue {
-        const arguments_ = callframe.arguments(1);
+        const arguments_ = callframe.arguments(2);
         var arguments = JSC.Node.ArgumentsSlice.init(globalThis.bunVM(), arguments_.slice());
         const string_args = arguments.nextEat() orelse {
             globalThis.throw("shell_parse: expected 2 arguments, got 0", .{});
@@ -4280,7 +4406,11 @@ pub const TestingAPIs = struct {
         var arena = std.heap.ArenaAllocator.init(bun.default_allocator);
         defer arena.deinit();
 
-        const template_args = callframe.argumentsPtr()[1..callframe.argumentsCount()];
+        const template_args_js = arguments.nextEat() orelse {
+            globalThis.throw("shell: expected 2 arguments, got 0", .{});
+            return .undefined;
+        };
+        var template_args = template_args_js.arrayIterator(globalThis);
         var stack_alloc = std.heap.stackFallback(@sizeOf(bun.String) * 4, arena.allocator());
         var jsstrings = std.ArrayList(bun.String).initCapacity(stack_alloc.get(), 4) catch {
             globalThis.throwOutOfMemory();
@@ -4300,7 +4430,7 @@ pub const TestingAPIs = struct {
         }
 
         var script = std.ArrayList(u8).init(arena.allocator());
-        if (!(shellCmdFromJS(globalThis, string_args, template_args, &jsobjs, &jsstrings, &script) catch {
+        if (!(shellCmdFromJS(globalThis, string_args, &template_args, &jsobjs, &jsstrings, &script) catch {
             globalThis.throwOutOfMemory();
             return JSValue.undefined;
         })) {
@@ -4356,7 +4486,7 @@ pub const TestingAPIs = struct {
         globalThis: *JSC.JSGlobalObject,
         callframe: *JSC.CallFrame,
     ) callconv(.C) JSC.JSValue {
-        const arguments_ = callframe.arguments(1);
+        const arguments_ = callframe.arguments(2);
         var arguments = JSC.Node.ArgumentsSlice.init(globalThis.bunVM(), arguments_.slice());
         const string_args = arguments.nextEat() orelse {
             globalThis.throw("shell_parse: expected 2 arguments, got 0", .{});
@@ -4366,7 +4496,11 @@ pub const TestingAPIs = struct {
         var arena = bun.ArenaAllocator.init(bun.default_allocator);
         defer arena.deinit();
 
-        const template_args = callframe.argumentsPtr()[1..callframe.argumentsCount()];
+        const template_args_js = arguments.nextEat() orelse {
+            globalThis.throw("shell: expected 2 arguments, got 0", .{});
+            return .undefined;
+        };
+        var template_args = template_args_js.arrayIterator(globalThis);
         var stack_alloc = std.heap.stackFallback(@sizeOf(bun.String) * 4, arena.allocator());
         var jsstrings = std.ArrayList(bun.String).initCapacity(stack_alloc.get(), 4) catch {
             globalThis.throwOutOfMemory();
@@ -4385,7 +4519,7 @@ pub const TestingAPIs = struct {
             }
         }
         var script = std.ArrayList(u8).init(arena.allocator());
-        if (!(shellCmdFromJS(globalThis, string_args, template_args, &jsobjs, &jsstrings, &script) catch {
+        if (!(shellCmdFromJS(globalThis, string_args, &template_args, &jsobjs, &jsstrings, &script) catch {
             globalThis.throwOutOfMemory();
             return JSValue.undefined;
         })) {
@@ -4395,9 +4529,9 @@ pub const TestingAPIs = struct {
         var out_parser: ?Parser = null;
         var out_lex_result: ?LexResult = null;
 
-        const script_ast = Interpreter.parse(&arena, script.items[0..], jsobjs.items[0..], jsstrings.items[0..], &out_parser, &out_lex_result) catch |err| {
+        const script_ast = Interpreter.parse(arena.allocator(), script.items[0..], jsobjs.items[0..], jsstrings.items[0..], &out_parser, &out_lex_result) catch |err| {
             if (err == ParseError.Lex) {
-                std.debug.assert(out_lex_result != null);
+                if (bun.Environment.allow_assert) assert(out_lex_result != null);
                 const str = out_lex_result.?.combineErrors(arena.allocator());
                 globalThis.throwPretty("{s}", .{str});
                 return .undefined;
@@ -4423,3 +4557,5 @@ pub const TestingAPIs = struct {
         return bun_str.toJS(globalThis);
     }
 };
+
+const assert = bun.assert;

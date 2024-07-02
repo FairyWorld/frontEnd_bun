@@ -5,7 +5,7 @@ const QueryStringMap = @import("../../url.zig").QueryStringMap;
 const CombinedScanner = @import("../../url.zig").CombinedScanner;
 const bun = @import("root").bun;
 const string = bun.string;
-const JSC = @import("root").bun.JSC;
+const JSC = bun.JSC;
 const js = JSC.C;
 const WebCore = JSC.WebCore;
 const Bundler = bun.bundler;
@@ -19,14 +19,14 @@ const JSObject = JSC.JSObject;
 const JSError = Base.JSError;
 const JSValue = JSC.JSValue;
 const JSGlobalObject = JSC.JSGlobalObject;
-const strings = @import("root").bun.strings;
+const strings = bun.strings;
 
 const To = Base.To;
 const Request = WebCore.Request;
 
 const URLPath = @import("../../http/url_path.zig");
 const URL = @import("../../url.zig").URL;
-const Log = @import("root").bun.logger;
+const Log = bun.logger;
 const Resolver = @import("../../resolver/resolver.zig").Resolver;
 const Router = @import("../../router.zig");
 
@@ -43,7 +43,7 @@ pub const FileSystemRouter = struct {
     origin: ?*JSC.RefString = null,
     base_dir: ?*JSC.RefString = null,
     router: Router,
-    arena: *@import("root").bun.ArenaAllocator = undefined,
+    arena: *bun.ArenaAllocator = undefined,
     allocator: std.mem.Allocator = undefined,
     asset_prefix: ?*JSC.RefString = null,
 
@@ -100,8 +100,8 @@ pub const FileSystemRouter = struct {
             globalThis.throwInvalidArguments("Expected dir to be a string", .{});
             return null;
         }
-        var arena = globalThis.allocator().create(@import("root").bun.ArenaAllocator) catch unreachable;
-        arena.* = @import("root").bun.ArenaAllocator.init(globalThis.allocator());
+        var arena = globalThis.allocator().create(bun.ArenaAllocator) catch unreachable;
+        arena.* = bun.ArenaAllocator.init(globalThis.allocator());
         const allocator = arena.allocator();
         var extensions = std.ArrayList(string).init(allocator);
         if (argument.get(globalThis, "fileExtensions")) |file_extensions| {
@@ -214,8 +214,8 @@ pub const FileSystemRouter = struct {
     pub fn reload(this: *FileSystemRouter, globalThis: *JSC.JSGlobalObject, callframe: *JSC.CallFrame) callconv(.C) JSValue {
         const this_value = callframe.this();
 
-        var arena = globalThis.allocator().create(@import("root").bun.ArenaAllocator) catch unreachable;
-        arena.* = @import("root").bun.ArenaAllocator.init(globalThis.allocator());
+        var arena = globalThis.allocator().create(bun.ArenaAllocator) catch unreachable;
+        arena.* = bun.ArenaAllocator.init(globalThis.allocator());
 
         var allocator = arena.allocator();
         var vm = globalThis.bunVM();
@@ -329,7 +329,7 @@ pub const FileSystemRouter = struct {
 
     pub fn getOrigin(this: *FileSystemRouter, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
         if (this.origin) |origin| {
-            return JSC.ZigString.init(origin.slice()).withEncoding().toValueGC(globalThis);
+            return JSC.ZigString.init(origin.slice()).withEncoding().toJS(globalThis);
         }
 
         return JSValue.jsNull();
@@ -355,12 +355,12 @@ pub const FileSystemRouter = struct {
     }
 
     pub fn getStyle(_: *FileSystemRouter, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
-        return ZigString.static("nextjs").toValue(globalThis);
+        return ZigString.static("nextjs").toJS(globalThis);
     }
 
     pub fn getAssetPrefix(this: *FileSystemRouter, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
         if (this.asset_prefix) |asset_prefix| {
-            return JSC.ZigString.init(asset_prefix.slice()).withEncoding().toValueGC(globalThis);
+            return JSC.ZigString.init(asset_prefix.slice()).withEncoding().toJS(globalThis);
         }
 
         return JSValue.jsNull();
@@ -400,7 +400,7 @@ pub const MatchedRoute = struct {
     pub usingnamespace JSC.Codegen.JSMatchedRoute;
 
     pub fn getName(this: *MatchedRoute, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
-        return ZigString.init(this.route.name).withEncoding().toValueGC(globalThis);
+        return ZigString.init(this.route.name).withEncoding().toJS(globalThis);
     }
 
     pub fn init(
@@ -469,7 +469,7 @@ pub const MatchedRoute = struct {
     ) callconv(.C) JSValue {
         return ZigString.init(this.route.file_path)
             .withEncoding()
-            .toValueGC(globalThis);
+            .toJS(globalThis);
     }
 
     pub fn finalize(
@@ -481,13 +481,13 @@ pub const MatchedRoute = struct {
     pub fn getPathname(this: *MatchedRoute, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
         return ZigString.init(this.route.pathname)
             .withEncoding()
-            .toValueGC(globalThis);
+            .toJS(globalThis);
     }
 
     pub fn getRoute(this: *MatchedRoute, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
         return ZigString.init(this.route.name)
             .withEncoding()
-            .toValueGC(globalThis);
+            .toJS(globalThis);
     }
 
     const KindEnum = struct {
@@ -511,7 +511,7 @@ pub const MatchedRoute = struct {
     };
 
     pub fn getKind(this: *MatchedRoute, globalThis: *JSC.JSGlobalObject) callconv(.C) JSValue {
-        return KindEnum.init(this.route.name).toValue(globalThis);
+        return KindEnum.init(this.route.name).toJS(globalThis);
     }
 
     threadlocal var query_string_values_buf: [256]string = undefined;
@@ -525,7 +525,7 @@ pub const MatchedRoute = struct {
                     const entry_name = entry.name;
                     var str = ZigString.init(entry_name).withEncoding();
 
-                    std.debug.assert(entry.values.len > 0);
+                    bun.assert(entry.values.len > 0);
                     if (entry.values.len > 1) {
                         var values = query_string_value_refs_buf[0..entry.values.len];
                         for (entry.values, 0..) |value, i| {
@@ -555,7 +555,7 @@ pub const MatchedRoute = struct {
         file_path: string,
         client_framework_enabled: bool,
     ) void {
-        var entry_point_tempbuf: [bun.MAX_PATH_BYTES]u8 = undefined;
+        var entry_point_tempbuf: bun.PathBuffer = undefined;
         // We don't store the framework config including the client parts in the server
         // instead, we just store a boolean saying whether we should generate this whenever the script is requested
         // this is kind of bad. we should consider instead a way to inline the contents of the script.
@@ -578,7 +578,7 @@ pub const MatchedRoute = struct {
         this: *MatchedRoute,
         globalThis: *JSC.JSGlobalObject,
     ) callconv(.C) JSC.JSValue {
-        var buf: [bun.MAX_PATH_BYTES]u8 = undefined;
+        var buf: bun.PathBuffer = undefined;
         var stream = std.io.fixedBufferStream(&buf);
         var writer = stream.writer();
         JSC.API.Bun.getPublicPathWithAssetPrefix(
@@ -592,7 +592,7 @@ pub const MatchedRoute = struct {
         );
         return ZigString.init(buf[0..writer.context.pos])
             .withEncoding()
-            .toValueGC(globalThis);
+            .toJS(globalThis);
     }
 
     pub fn getParams(

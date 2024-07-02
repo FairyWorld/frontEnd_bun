@@ -16,7 +16,7 @@ param(
 );
 
 # filter out 32 bit + ARM
-if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64") {
+if (-not ((Get-CimInstance Win32_ComputerSystem)).SystemType -match "x64-based") {
   Write-Output "Install Failed:"
   Write-Output "Bun for Windows is currently only available for x86 64-bit Windows.`n"
   return 1
@@ -277,7 +277,7 @@ function Install-Bun {
       New-ItemProperty -Path $RegistryKey -Name "DisplayName" -Value "Bun" -PropertyType String -Force | Out-Null
       New-ItemProperty -Path $RegistryKey -Name "InstallLocation" -Value "${BunRoot}" -PropertyType String -Force | Out-Null
       New-ItemProperty -Path $RegistryKey -Name "DisplayIcon" -Value $BunBin\bun.exe -PropertyType String -Force | Out-Null
-      New-ItemProperty -Path $RegistryKey -Name "UninstallString" -Value "powershell -c `"& `'$BunRoot\uninstall.ps1`' -PauseOnError`"" -PropertyType String -Force | Out-Null
+      New-ItemProperty -Path $RegistryKey -Name "UninstallString" -Value "powershell -c `"& `'$BunRoot\uninstall.ps1`' -PauseOnError`" -ExecutionPolicy Bypass" -PropertyType String -Force | Out-Null
     } catch {
       if ($rootKey -ne $null) {
         Remove-Item -Path $RegistryKey -Force
