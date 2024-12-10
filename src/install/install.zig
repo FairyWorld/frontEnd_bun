@@ -2842,8 +2842,13 @@ pub const PackageManager = struct {
             }
 
             const key = allocator.dupeZ(u8, path) catch bun.outOfMemory();
+            entry.key_ptr.* = key;
 
-            const source = bun.sys.File.toSource(key, allocator).unwrap() catch |err| return .{ .read_err = err };
+            const source = bun.sys.File.toSource(key, allocator).unwrap() catch |err| {
+                _ = this.map.remove(key);
+                allocator.free(key);
+                return .{ .read_err = err };
+            };
 
             if (comptime opts.init_reset_store)
                 initializeStore();
@@ -2859,6 +2864,9 @@ pub const PackageManager = struct {
                     .guess_indentation = opts.guess_indentation,
                 },
             ) catch |err| {
+                _ = this.map.remove(key);
+                allocator.free(source.contents);
+                allocator.free(key);
                 bun.handleErrorReturnTrace(err, @errorReturnTrace());
                 return .{ .parse_err = err };
             };
@@ -2868,8 +2876,6 @@ pub const PackageManager = struct {
                 .source = source,
                 .indentation = json.indentation,
             };
-
-            entry.key_ptr.* = key;
 
             return .{ .entry = entry.value_ptr };
         }
@@ -2913,7 +2919,10 @@ pub const PackageManager = struct {
                 },
             );
 
-            const json = json_result catch |err| return .{ .parse_err = err };
+            const json = json_result catch |err| {
+                _ = this.map.remove(path);
+                return .{ .parse_err = err };
+            };
 
             entry.value_ptr.* = .{
                 .root = json.root.deepClone(allocator) catch bun.outOfMemory(),
@@ -6208,6 +6217,24 @@ pub const PackageManager = struct {
 
         var timestamp_this_tick: ?u32 = null;
 
+        defer {
+            manager.drainDependencyList();
+
+            if (comptime log_level.showProgress()) {
+                manager.startProgressBarIfNone();
+
+                if (@hasField(@TypeOf(callbacks), "progress_bar") and callbacks.progress_bar == true) {
+                    const completed_items = manager.total_tasks - manager.pendingTaskCount();
+                    if (completed_items != manager.downloads_node.?.unprotected_completed_items or has_updated_this_run) {
+                        manager.downloads_node.?.setCompletedItems(completed_items);
+                        manager.downloads_node.?.setEstimatedTotalItems(manager.total_tasks);
+                    }
+                }
+                manager.downloads_node.?.activate();
+                manager.progress.maybeRefresh();
+            }
+        }
+
         var patch_tasks_batch = manager.patch_task_queue.popBatch();
         var patch_tasks_iter = patch_tasks_batch.iterator();
         while (patch_tasks_iter.next()) |ptask| {
@@ -6930,20 +6957,6 @@ pub const PackageManager = struct {
                     }
                 },
             }
-        }
-
-        manager.drainDependencyList();
-
-        if (comptime log_level.showProgress()) {
-            if (@hasField(@TypeOf(callbacks), "progress_bar") and callbacks.progress_bar == true) {
-                const completed_items = manager.total_tasks - manager.pendingTaskCount();
-                if (completed_items != manager.downloads_node.?.unprotected_completed_items or has_updated_this_run) {
-                    manager.downloads_node.?.setCompletedItems(completed_items);
-                    manager.downloads_node.?.setEstimatedTotalItems(manager.total_tasks);
-                }
-            }
-            manager.downloads_node.?.activate();
-            manager.progress.maybeRefresh();
         }
     }
 
@@ -8661,38 +8674,25 @@ pub const PackageManager = struct {
                 "./.npmrc",
             };
 
-            bun.ini.loadNpmrcFromFile(
-                ctx.allocator,
-                ctx.install orelse brk: {
-                    const install_ = ctx.allocator.create(Api.BunInstall) catch bun.outOfMemory();
-                    install_.* = std.mem.zeroes(Api.BunInstall);
-                    ctx.install = install_;
-                    break :brk install_;
-                },
-                env,
-                true,
-                Path.joinAbsStringBufZ(
-                    data_dir,
-                    &buf,
-                    &parts,
-                    .auto,
-                ),
-            );
-        }
-
-        bun.ini.loadNpmrcFromFile(
-            ctx.allocator,
-            ctx.install orelse brk: {
+            bun.ini.loadNpmrcConfig(ctx.allocator, ctx.install orelse brk: {
                 const install_ = ctx.allocator.create(Api.BunInstall) catch bun.outOfMemory();
                 install_.* = std.mem.zeroes(Api.BunInstall);
                 ctx.install = install_;
                 break :brk install_;
-            },
-            env,
-            true,
-            ".npmrc",
-        );
-
+            }, env, true, &[_][:0]const u8{ Path.joinAbsStringBufZ(
+                data_dir,
+                &buf,
+                &parts,
+                .auto,
+            ), ".npmrc" });
+        } else {
+            bun.ini.loadNpmrcConfig(ctx.allocator, ctx.install orelse brk: {
+                const install_ = ctx.allocator.create(Api.BunInstall) catch bun.outOfMemory();
+                install_.* = std.mem.zeroes(Api.BunInstall);
+                ctx.install = install_;
+                break :brk install_;
+            }, env, true, &[_][:0]const u8{".npmrc"});
+        }
         const cpu_count = bun.getThreadCount();
 
         const options = Options{
@@ -10096,16 +10096,16 @@ pub const PackageManager = struct {
             var array = Array{};
 
             const update_requests = parseWithError(allocator, null, &log, all_positionals.items, &array, .add, false) catch {
-                return globalThis.throwValue2(log.toJS(globalThis, bun.default_allocator, "Failed to parse dependencies"));
+                return globalThis.throwValue(log.toJS(globalThis, bun.default_allocator, "Failed to parse dependencies"));
             };
             if (update_requests.len == 0) return .undefined;
 
             if (log.msgs.items.len > 0) {
-                return globalThis.throwValue2(log.toJS(globalThis, bun.default_allocator, "Failed to parse dependencies"));
+                return globalThis.throwValue(log.toJS(globalThis, bun.default_allocator, "Failed to parse dependencies"));
             }
 
             if (update_requests[0].failed) {
-                return globalThis.throw2("Failed to parse dependencies", .{});
+                return globalThis.throw("Failed to parse dependencies", .{});
             }
 
             var object = JSC.JSValue.createEmptyObject(globalThis, 2);
@@ -15016,12 +15016,10 @@ pub const bun_install_js_bindings = struct {
 
         switch (load_result) {
             .err => |err| {
-                globalObject.throw("failed to load lockfile: {s}, \"{s}\"", .{ @errorName(err.value), lockfile_path });
-                return .zero;
+                return globalObject.throw("failed to load lockfile: {s}, \"{s}\"", .{ @errorName(err.value), lockfile_path });
             },
             .not_found => {
-                globalObject.throw("lockfile not found: \"{s}\"", .{lockfile_path});
-                return .zero;
+                return globalObject.throw("lockfile not found: \"{s}\"", .{lockfile_path});
             },
             .ok => {},
         }
@@ -15040,13 +15038,11 @@ pub const bun_install_js_bindings = struct {
             },
             buffered_writer.writer(),
         ) catch |err| {
-            globalObject.throw("failed to print lockfile as JSON: {s}", .{@errorName(err)});
-            return .zero;
+            return globalObject.throw("failed to print lockfile as JSON: {s}", .{@errorName(err)});
         };
 
         buffered_writer.flush() catch |err| {
-            globalObject.throw("failed to print lockfile as JSON: {s}", .{@errorName(err)});
-            return .zero;
+            return globalObject.throw("failed to print lockfile as JSON: {s}", .{@errorName(err)});
         };
 
         var str = bun.String.createUTF8(buffer.list.items);

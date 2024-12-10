@@ -40,6 +40,7 @@
 #include "ErrorCode.h"
 
 #include "napi_handle_scope.h"
+#include "napi_external.h"
 
 #ifndef WIN32
 #include <errno.h>
@@ -359,6 +360,8 @@ JSC_DEFINE_HOST_FUNCTION(Process_functionDlopen,
     void* handle = dlopen(utf8.data(), RTLD_LAZY);
 #endif
 
+    globalObject->m_pendingNapiModuleDlopenHandle = handle;
+
     Bun__process_dlopen_count++;
 
     if (!handle) {
@@ -425,10 +428,18 @@ JSC_DEFINE_HOST_FUNCTION(Process_functionDlopen,
     EncodedJSValue exportsValue = JSC::JSValue::encode(exports);
     JSC::JSValue resultValue = JSValue::decode(napi_register_module_v1(globalObject, exportsValue));
 
+    // TODO: think about the finalizer here
+    // currently we do not dealloc napi modules so we don't have to worry about it right now
+    auto* meta = new Bun::NapiModuleMeta(globalObject->m_pendingNapiModuleDlopenHandle);
+    Bun::NapiExternal* napi_external = Bun::NapiExternal::create(vm, globalObject->NapiExternalStructure(), meta, nullptr, nullptr);
+    bool success = resultValue.getObject()->putDirect(vm, WebCore::builtinNames(vm).napiDlopenHandlePrivateName(), napi_external, JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly);
+    ASSERT(success);
+
     RETURN_IF_EXCEPTION(scope, {});
 
     globalObject->m_pendingNapiModuleAndExports[0].clear();
     globalObject->m_pendingNapiModuleAndExports[1].clear();
+    globalObject->m_pendingNapiModuleDlopenHandle = nullptr;
 
     // https://github.com/nodejs/node/blob/2eff28fb7a93d3f672f80b582f664a7c701569fb/src/node_api.cc#L734-L742
     // https://github.com/oven-sh/bun/issues/1288
@@ -1081,6 +1092,11 @@ Process::~Process()
 
 JSC_DEFINE_HOST_FUNCTION(Process_functionAbort, (JSGlobalObject * globalObject, CallFrame*))
 {
+#if OS(WINDOWS)
+    // Raising SIGABRT is handled in the CRT in windows, calling _exit() with ambiguous code "3" by default.
+    // This adjustment to the abort behavior gives a more sane exit code on abort, by calling _exit directly with code 134.
+    _exit(134);
+#endif
     abort();
 }
 
@@ -2013,7 +2029,7 @@ static JSValue constructPid(VM& vm, JSObject* processObject)
 static JSValue constructPpid(VM& vm, JSObject* processObject)
 {
 #if OS(WINDOWS)
-    return jsNumber(0);
+    return jsNumber(uv_os_getppid());
 #else
     return jsNumber(getppid());
 #endif
@@ -2100,24 +2116,12 @@ JSC_DEFINE_HOST_FUNCTION(Process_functiongetgroups, (JSGlobalObject * globalObje
         throwSystemError(throwScope, globalObject, "getgroups"_s, errno);
         return {};
     }
-
-    gid_t egid = getegid();
-    JSArray* groups = constructEmptyArray(globalObject, nullptr, static_cast<unsigned int>(ngroups));
+    JSArray* groups = constructEmptyArray(globalObject, nullptr, ngroups);
     Vector<gid_t> groupVector(ngroups);
-    getgroups(1, &egid);
-    bool needsEgid = true;
+    getgroups(ngroups, groupVector.data());
     for (unsigned i = 0; i < ngroups; i++) {
-        auto current = groupVector[i];
-        if (current == needsEgid) {
-            needsEgid = false;
-        }
-
-        groups->putDirectIndex(globalObject, i, jsNumber(current));
+        groups->putDirectIndex(globalObject, i, jsNumber(groupVector[i]));
     }
-
-    if (needsEgid)
-        groups->push(globalObject, jsNumber(egid));
-
     return JSValue::encode(groups);
 }
 #endif
