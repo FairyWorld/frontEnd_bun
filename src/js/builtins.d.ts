@@ -690,6 +690,7 @@ declare function $ERR_BROTLI_INVALID_PARAM(p: number): RangeError;
 declare function $ERR_TLS_CERT_ALTNAME_INVALID(reason: string, host: string, cert): Error;
 declare function $ERR_USE_AFTER_CLOSE(name: string): Error;
 declare function $ERR_HTTP2_INVALID_HEADER_VALUE(value: string, name: string): TypeError;
+declare function $ERR_INVALID_HANDLE_TYPE(): TypeError;
 declare function $ERR_INVALID_HTTP_TOKEN(name: string, value: string): TypeError;
 declare function $ERR_HTTP2_STATUS_INVALID(code: number): RangeError;
 declare function $ERR_HTTP2_INVALID_PSEUDOHEADER(name: string): TypeError;
@@ -702,6 +703,9 @@ declare function $ERR_INVALID_CHAR(name, field?): TypeError;
 declare function $ERR_HTTP_INVALID_HEADER_VALUE(value: string, name: string): TypeError;
 declare function $ERR_HTTP_HEADERS_SENT(action: string): Error;
 declare function $ERR_INVALID_PROTOCOL(proto, expected): TypeError;
+declare function $ERR_INVALID_STATE(message: string): Error;
+declare function $ERR_INVALID_STATE_TypeError(message: string): TypeError;
+declare function $ERR_INVALID_STATE_RangeError(message: string): RangeError;
 declare function $ERR_UNESCAPED_CHARACTERS(arg): TypeError;
 declare function $ERR_HTTP_INVALID_STATUS_CODE(code): RangeError;
 declare function $ERR_UNHANDLED_ERROR(err?): Error;
@@ -767,6 +771,7 @@ declare function $ERR_HTTP2_OUT_OF_STREAMS(): Error;
 declare function $ERR_HTTP_BODY_NOT_ALLOWED(): Error;
 declare function $ERR_HTTP_SOCKET_ASSIGNED(): Error;
 declare function $ERR_DIR_CLOSED(): Error;
+declare function $ERR_INVALID_MIME_SYNTAX(production: string, str: string, invalidIndex: number | -1): TypeError;
 
 /**
  * Convert a function to a class-like object.

@@ -122,7 +122,7 @@ pub fn doReadFile(this: *Blob, comptime Function: anytype, global: *JSGlobalObje
 
     if (Environment.isWindows) {
         var promise = JSPromise.create(global);
-        const promise_value = promise.asValue(global);
+        const promise_value = promise.toJS();
         promise_value.ensureStillAlive();
         handler.promise.strong.set(global, promise_value);
 
@@ -147,7 +147,7 @@ pub fn doReadFile(this: *Blob, comptime Function: anytype, global: *JSGlobalObje
     // The JSPromise is the next GC'd memory allocation.
     // This shouldn't really fix anything, but it's a little safer.
     var promise = JSPromise.create(global);
-    const promise_value = promise.asValue(global);
+    const promise_value = promise.toJS();
     promise_value.ensureStillAlive();
     handler.promise.strong.set(global, promise_value);
 
@@ -2919,35 +2919,23 @@ pub fn setName(
     jsThis: JSC.JSValue,
     globalThis: *JSC.JSGlobalObject,
     value: JSValue,
-
-    // TODO: support JSError for getters/setters
-) bool {
+) JSError!void {
     // by default we don't have a name so lets allow it to be set undefined
     if (value.isEmptyOrUndefinedOrNull()) {
         this.name.deref();
         this.name = bun.String.dead;
         js.nameSetCached(jsThis, globalThis, value);
-        return true;
+        return;
     }
     if (value.isString()) {
         const old_name = this.name;
 
-        this.name = bun.String.fromJS(value, globalThis) catch |err| {
-            switch (err) {
-                error.JSError => {},
-                error.OutOfMemory => {
-                    globalThis.throwOutOfMemory() catch {};
-                },
-            }
-            this.name = bun.String.empty;
-            return false;
-        };
+        errdefer this.name = bun.String.empty;
+        this.name = try bun.String.fromJS(value, globalThis);
         // We don't need to increment the reference count since tryFromJS already did it.
         js.nameSetCached(jsThis, globalThis, value);
         old_name.deref();
-        return true;
     }
-    return false;
 }
 
 pub fn getFileName(

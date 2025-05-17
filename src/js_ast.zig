@@ -119,7 +119,7 @@ pub fn NewStore(comptime types: []const type, comptime count: usize) type {
             log("deinit", .{});
             var it = store.firstBlock().next; // do not free `store.head`
             while (it) |next| {
-                if (Environment.isDebug)
+                if (Environment.isDebug or Environment.enable_asan)
                     @memset(next.buffer, undefined);
                 it = next.next;
                 backing_allocator.destroy(next);
@@ -133,7 +133,7 @@ pub fn NewStore(comptime types: []const type, comptime count: usize) type {
         pub fn reset(store: *Store) void {
             log("reset", .{});
 
-            if (Environment.isDebug) {
+            if (Environment.isDebug or Environment.enable_asan) {
                 var it: ?*Block = store.firstBlock();
                 while (it) |next| : (it = next.next) {
                     next.bytes_used = undefined;
@@ -2489,6 +2489,7 @@ pub const E = struct {
         }
 
         pub fn eqlComptime(s: *const String, comptime value: []const u8) bool {
+            bun.assert(s.next == null);
             return if (s.isUTF8())
                 strings.eqlComptime(s.data, value)
             else
@@ -3212,6 +3213,18 @@ pub const Stmt = struct {
                 }
 
                 instance = StoreType.init();
+            }
+
+            /// create || reset
+            pub fn begin() void {
+                if (memory_allocator != null) return;
+                if (instance == null) {
+                    create();
+                    return;
+                }
+
+                if (!disable_reset)
+                    instance.?.reset();
             }
 
             pub fn reset() void {
@@ -6197,6 +6210,7 @@ pub const Expr = struct {
                         },
                         .e_number => |r| {
                             if (comptime kind == .loose) {
+                                l.resolveRopeIfNeeded(p.allocator);
                                 if (r.value == 0 and (l.isBlank() or l.eqlComptime("0"))) {
                                     return Equality.true;
                                 }
@@ -6322,10 +6336,22 @@ pub const Expr = struct {
             }
 
             pub inline fn assert() void {
-                if (comptime Environment.allow_assert) {
+                if (comptime Environment.isDebug or Environment.enable_asan) {
                     if (instance == null and memory_allocator == null)
                         bun.unreachablePanic("Store must be init'd", .{});
                 }
+            }
+
+            /// create || reset
+            pub fn begin() void {
+                if (memory_allocator != null) return;
+                if (instance == null) {
+                    create();
+                    return;
+                }
+
+                if (!disable_reset)
+                    instance.?.reset();
             }
 
             pub fn append(comptime T: type, value: T) *T {
@@ -8244,9 +8270,9 @@ pub const Macro = struct {
 
                         if (value.jsType() == .DOMWrapper) {
                             if (value.as(JSC.WebCore.Response)) |resp| {
-                                return this.run(resp.getBlobWithoutCallFrame(this.global));
+                                return this.run(try resp.getBlobWithoutCallFrame(this.global));
                             } else if (value.as(JSC.WebCore.Request)) |resp| {
-                                return this.run(resp.getBlobWithoutCallFrame(this.global));
+                                return this.run(try resp.getBlobWithoutCallFrame(this.global));
                             } else if (value.as(JSC.WebCore.Blob)) |resp| {
                                 blob_ = resp.*;
                                 blob_.?.allocator = null;
@@ -8425,7 +8451,7 @@ pub const Macro = struct {
                         }
 
                         if (rejected or promise_result.isError() or promise_result.isAggregateError(this.global) or promise_result.isException(this.global.vm())) {
-                            _ = this.macro.vm.unhandledRejection(this.global, promise_result, promise.asValue(this.global));
+                            _ = this.macro.vm.unhandledRejection(this.global, promise_result, promise.asValue());
                             return error.MacroFailed;
                         }
                         this.is_top_level = false;
@@ -8554,6 +8580,48 @@ pub const ASTMemoryAllocator = struct {
     allocator: std.mem.Allocator,
     previous: ?*ASTMemoryAllocator = null,
 
+    pub fn enter(this: *ASTMemoryAllocator, allocator: std.mem.Allocator) ASTMemoryAllocator.Scope {
+        this.allocator = allocator;
+        this.stack_allocator = SFA{
+            .buffer = undefined,
+            .fallback_allocator = allocator,
+            .fixed_buffer_allocator = undefined,
+        };
+        this.bump_allocator = this.stack_allocator.get();
+        this.previous = null;
+        var ast_scope = ASTMemoryAllocator.Scope{
+            .current = this,
+            .previous = Stmt.Data.Store.memory_allocator,
+        };
+        ast_scope.enter();
+        return ast_scope;
+    }
+    pub const Scope = struct {
+        current: ?*ASTMemoryAllocator = null,
+        previous: ?*ASTMemoryAllocator = null,
+
+        pub fn enter(this: *@This()) void {
+            bun.debugAssert(Expr.Data.Store.memory_allocator == Stmt.Data.Store.memory_allocator);
+
+            this.previous = Expr.Data.Store.memory_allocator;
+
+            const current = this.current;
+
+            Expr.Data.Store.memory_allocator = current;
+            Stmt.Data.Store.memory_allocator = current;
+
+            if (current == null) {
+                Stmt.Data.Store.begin();
+                Expr.Data.Store.begin();
+            }
+        }
+
+        pub fn exit(this: *const @This()) void {
+            Expr.Data.Store.memory_allocator = this.previous;
+            Stmt.Data.Store.memory_allocator = this.previous;
+        }
+    };
+
     pub fn reset(this: *ASTMemoryAllocator) void {
         this.stack_allocator = SFA{
             .buffer = undefined,
@@ -8580,6 +8648,16 @@ pub const ASTMemoryAllocator = struct {
         const ptr = this.bump_allocator.create(ValueType) catch unreachable;
         ptr.* = value;
         return ptr;
+    }
+
+    /// Initialize ASTMemoryAllocator as `undefined`, and call this.
+    pub fn initWithoutStack(this: *ASTMemoryAllocator, arena: std.mem.Allocator) void {
+        this.stack_allocator = SFA{
+            .buffer = undefined,
+            .fallback_allocator = arena,
+            .fixed_buffer_allocator = .init(&.{}),
+        };
+        this.bump_allocator = this.stack_allocator.get();
     }
 };
 
